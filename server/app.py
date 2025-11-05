@@ -58,7 +58,6 @@ def parse_hurdat2(filepath):
                 lon_str = info[5]
                 lon = float(lon_str[:-1]) * (-1 if lon_str.endswith("W") else 1)
                 wind = int(info[6])
-                pressure = int(info[7])
             
                 if is_in_florida(lat, lon):
                     florida_hurricanes.append({
@@ -69,10 +68,13 @@ def parse_hurdat2(filepath):
                         "latitude": lat,
                         "longitude": lon,
                         "wind": wind,
-                        "pressure": pressure
                     })
                     
     return pd.DataFrame(florida_hurricanes)
+
+@app.route("/")
+def home():
+    return "API is running."
 
 @app.route("/api/hurricanes/landfall/florida", methods=["GET"])
 def get_florida_landfall_hurricanes():
@@ -81,13 +83,6 @@ def get_florida_landfall_hurricanes():
     """
     try:
         df = parse_hurdat2("hurdat2-1851-2024-040425.txt")
-
-        if df.empty:
-            return jsonify({
-                "success": True,
-                "message": "No hurricanes found in Florida since 1900.",
-                "data": []
-            }), 200
 
         return jsonify({
             "success": True,
