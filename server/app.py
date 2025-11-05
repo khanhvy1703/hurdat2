@@ -1,4 +1,9 @@
+from flask import Flask, jsonify
+from flask_cors import CORS
 import pandas as pd
+
+app = Flask(__name__)
+CORS(app)
 
 FLORIDA_BOUNDS = {
     "lat_min": 24.45,
@@ -16,7 +21,7 @@ def is_in_florida(lat, lon):
 
 def parse_hurdat2(filepath):
     """
-    Parse the HURDAT2 text file and extract hurricane landfalls in Florida.
+    Parse the HURDAT2 filepath and extract hurricane landfalls in Florida.
     """ 
     florida_hurricanes = []
     huricane_name = None  
@@ -36,8 +41,8 @@ def parse_hurdat2(filepath):
         else:
             info = [i.strip() for i in line.split(",")]
             
-            if len(info) < 6:
-                raise ValueError("Invalid input provided.")
+            if len(info) < 21:
+                raise ValueError("Invalid hurricane info format.")
             
             if info[2] == "L" and info[3] == "HU":
                 month_year_date = info[0]
@@ -45,28 +50,62 @@ def parse_hurdat2(filepath):
                 month = int(month_year_date[4:6])
                 day = int(month_year_date[6:8])
                 
-                if year >= 1900:
-                    lat_str = info[4]
-                    lat = float(lat_str[:-1]) * (1 if lat_str.endswith("N") else -1)
-                    lon_str = info[5]
-                    lon = float(lon_str[:-1]) * (-1 if lon_str.endswith("W") else 1)
+                if year < 1900:
+                    continue
                 
-                    if is_in_florida(lat, lon):
-                        florida_hurricanes.append({
-                            "name": huricane_name,
-                            "year": year,
-                            "month": month,
-                            "day": day,
-                            "latitude": lat,
-                            "longitude": lon,
-                        })
+                lat_str = info[4]
+                lat = float(lat_str[:-1]) * (1 if lat_str.endswith("N") else -1)
+                lon_str = info[5]
+                lon = float(lon_str[:-1]) * (-1 if lon_str.endswith("W") else 1)
+                wind = int(info[6])
+                pressure = int(info[7])
+            
+                if is_in_florida(lat, lon):
+                    florida_hurricanes.append({
+                        "name": huricane_name,
+                        "year": year,
+                        "month": month,
+                        "day": day,
+                        "latitude": lat,
+                        "longitude": lon,
+                        "wind": wind,
+                        "pressure": pressure
+                    })
                     
     return pd.DataFrame(florida_hurricanes)
 
-def main():
-    """Run the analysis and save the report."""
-    df = parse_hurdat2("hurdat2-1851-2024-040425.txt")
-    df.to_csv("florida_hurricane_landfalls.csv", index=False)
+@app.route("/api/hurricanes/landfall/florida", methods=["GET"])
+def get_florida_landfall_hurricanes():
+    """
+    Get API endpoint to get hurricanes that made landfall in Florida.
+    """
+    try:
+        df = parse_hurdat2("hurdat2-1851-2024-040425.txt")
+
+        if df.empty:
+            return jsonify({
+                "success": True,
+                "message": "No hurricanes found in Florida since 1900.",
+                "data": []
+            }), 200
+
+        return jsonify({
+            "success": True,
+            "count": len(df),
+            "data": df.to_dict(orient="records")
+        }), 200
+
+    except FileNotFoundError as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 404
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Internal server error: {e}"
+        }), 500
 
 if __name__ == "__main__":
-    main()
+    app.run(port=5000, debug=True)
