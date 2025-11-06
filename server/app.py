@@ -12,6 +12,8 @@ FLORIDA_BOUNDS = {
     "lon_min": -87.63,
     "lon_max": -80.03
 }
+DATA_FILE = "hurdat2-1851-2024-040425.txt"
+DEFAULT_EXPORT_FILE = "florida_landfall_hurricanes.csv"
 
 def is_in_florida(lat, lon):
     """
@@ -20,14 +22,14 @@ def is_in_florida(lat, lon):
     return (FLORIDA_BOUNDS["lat_min"] <= lat <= FLORIDA_BOUNDS["lat_max"] and
             FLORIDA_BOUNDS["lon_min"] <= lon <= FLORIDA_BOUNDS["lon_max"])
 
-def parse_hurdat2(filepath):
+def parse_hurdat2(file):
     """
     Parse the HURDAT2 filepath and extract hurricane landfalls in Florida.
     """ 
     florida_hurricanes = []
     huricane_name = None  
      
-    with open(filepath) as f:
+    with open(file) as f:
         lines = f.readlines()
         print(lines[1])
 
@@ -83,12 +85,8 @@ def export_csv():
     Export the Florida landfall hurricanes data to a CSV file.
     """
     try:
-        filename = request.args.get("filename")
-        if not filename or filename.strip() == "":
-            filename = f"florida_landfall_hurricanes.csv"
-            
-        df = parse_hurdat2("hurdat2-1851-2024-040425.txt")
-        df.to_csv(filename, index=False)
+        df = parse_hurdat2(DATA_FILE)
+        df.to_csv(DEFAULT_EXPORT_FILE, index=False)
 
         return jsonify({
             "success": True,
@@ -116,7 +114,7 @@ def get_florida_landfall_hurricanes():
     Get API endpoint to get hurricanes that made landfall in Florida.
     """
     try:
-        df = parse_hurdat2("hurdat2-1851-2024-040425.txt")
+        df = parse_hurdat2(DATA_FILE)
 
         return jsonify({
             "success": True,
