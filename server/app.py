@@ -68,8 +68,6 @@ def parse_hurdat2(file):
                         "year": year,
                         "month": month,
                         "day": day,
-                        "latitude": lat,
-                        "longitude": lon,
                         "wind": wind,
                     })
                     

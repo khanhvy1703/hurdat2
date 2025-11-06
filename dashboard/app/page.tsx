@@ -14,16 +14,8 @@ import {
   HStack,
 } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
-
-export type Hurricane = {
-  name: string;
-  year: number;
-  month: number;
-  day: string;
-  wind: number;
-  latitude: number;
-  longitude: number;
-};
+import { apiCall } from "./utils/api";
+import { Hurricane } from "./utils/type";
 
 export default function Home() {
   const [hurricanes, setHurricanes] = useState<Hurricane[]>([]);
@@ -36,60 +28,30 @@ export default function Home() {
   useEffect(() => {
     const fetchHurricanes = async () => {
       try {
-        const response = await fetch(
+        const data = await apiCall<Hurricane[]>(
           `${process.env.NEXT_PUBLIC_SERVER_ENDPOINT}/hurricanes/landfall/florida`
         );
-        if (!response.ok) {
-          setError(true);
-          return;
-        }
-
-        const data = await response.json();
-
-        if (!data || !data.success) {
-          setError(data.error || "Invalid API response format.");
-          return;
-        }
-
-        setHurricanes(data.data);
-      } catch (error) {
+        setHurricanes(data);
+      } catch (err: any) {
         setError(true);
-        setErrorMessage("Failed to fetch hurricane data.");
+        setErrorMessage(err.message);
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchHurricanes();
   }, []);
 
   const exportToCSV = async () => {
     setLoading(true);
+
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVER_ENDPOINT}/export_csv`,
-        {
-          method: "GET",
-        }
-      );
-
-      if (!response.ok) {
-        setError(true);
-        setErrorMessage(`HTTP error: ${response.status}`);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!data || !data.success) {
-        setError(data.error || "Invalid API response format.");
-        return;
-      }
-
+      await apiCall(`${process.env.NEXT_PUBLIC_SERVER_ENDPOINT}/export_csv`);
       setExported(true);
-    } catch (error) {
+    } catch (err: any) {
       setError(true);
-      setErrorMessage(`Failed to export CSV.`);
+      setErrorMessage(err.message);
     } finally {
       setLoading(false);
     }
@@ -108,17 +70,14 @@ export default function Home() {
     >
       {loading && <Spinner size="xl" mt={10} />}
       {error && <Text fontSize="xl">{errorMessage}</Text>}
-      {hurricanes.length <= 0 && !loading && (
-        <Text fontSize="xl">No hurricanes found</Text>
-      )}
 
-      {hurricanes.length > 0 && !loading && !error && (
+      {!loading && !error && (
         <>
           <Text fontSize="3xl" fontWeight="bold" textAlign="center" mb={6}>
             All hurricanes that have made landfall in Florida since 1900
           </Text>
 
-          <HStack mb={6}>
+          <Stack mb={6}>
             <Button colorPalette="blue" variant="solid" onClick={exportToCSV}>
               Export To CSV
             </Button>
@@ -127,9 +86,13 @@ export default function Home() {
                 CSV exported successfully!
               </Text>
             )}
-          </HStack>
+          </Stack>
 
-          <Box w={{ base: "100%", md: "80%", lg: "50%" }} mx="auto">
+          {hurricanes.length === 0 && (
+            <Text fontSize="xl">No hurricanes found.</Text>
+          )}
+
+          {hurricanes.length > 0 && (<Box w={{ base: "100%", md: "80%", lg: "50%" }} mx="auto">
             <Stack width="full" gap="5">
               <Table.Root size="sm" variant="outline" showColumnBorder>
                 <Table.Header>
@@ -220,7 +183,7 @@ export default function Home() {
                 </ButtonGroup>
               </Pagination.Root>
             </Stack>
-          </Box>
+          </Box>)}
         </>
       )}
     </Box>
