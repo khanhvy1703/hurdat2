@@ -1,4 +1,5 @@
-from flask import Flask, jsonify
+from io import StringIO
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import pandas as pd
 
@@ -76,7 +77,40 @@ def parse_hurdat2(filepath):
 def home():
     return "API is running."
 
-@app.route("/api/hurricanes/landfall/florida", methods=["GET"])
+@app.route("/export_csv", methods=["GET"])
+def export_csv():
+    """
+    Export the Florida landfall hurricanes data to a CSV file.
+    """
+    try:
+        filename = request.args.get("filename")
+        if not filename or filename.strip() == "":
+            filename = f"florida_landfall_hurricanes.csv"
+            
+        df = parse_hurdat2("hurdat2-1851-2024-040425.txt")
+        df.to_csv(filename, index=False)
+
+        return jsonify({
+            "success": True,
+            "code": 200,
+            "message": "CSV exported successfully"
+        }), 200
+
+    except FileNotFoundError as e:
+        return jsonify({
+            "success": False,
+            "code": 404,
+            "error": str(e)
+        }), 404
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "code": 500,
+            "error": f"Internal server error: {e}"
+        }), 500
+
+@app.route("/hurricanes/landfall/florida", methods=["GET"])
 def get_florida_landfall_hurricanes():
     """
     Get API endpoint to get hurricanes that made landfall in Florida.
@@ -86,19 +120,21 @@ def get_florida_landfall_hurricanes():
 
         return jsonify({
             "success": True,
-            "count": len(df),
+            "code": 200,
             "data": df.to_dict(orient="records")
         }), 200
 
     except FileNotFoundError as e:
         return jsonify({
             "success": False,
+            "code": 404,
             "error": str(e)
         }), 404
 
     except Exception as e:
         return jsonify({
             "success": False,
+            "code": 500,
             "error": f"Internal server error: {e}"
         }), 500
 
