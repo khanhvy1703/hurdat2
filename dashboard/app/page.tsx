@@ -11,7 +11,6 @@ import {
   Pagination,
   Stack,
   Button,
-  HStack,
 } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import { apiCall } from "./utils/api";
@@ -97,11 +96,14 @@ export default function Home() {
               <Table.Root size="sm" variant="outline" showColumnBorder>
                 <Table.Header>
                   <Table.Row>
-                    <Table.ColumnHeader w="34%">Name</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="center" w="33%">
+                    <Table.ColumnHeader w="25%">Name</Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="center" w="25%">
                       Date
                     </Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end" w="33%">
+                    <Table.ColumnHeader textAlign="center" w="25%">
+                      Time
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="end" w="25%">
                       Wind Speed
                     </Table.ColumnHeader>
                   </Table.Row>
@@ -117,6 +119,9 @@ export default function Home() {
                         </Table.Cell>
                         <Table.Cell textAlign="center">
                           {hurricane.month}/{hurricane.day}/{hurricane.year}
+                        </Table.Cell>
+                        <Table.Cell textAlign="center">
+                          {hurricane.time}
                         </Table.Cell>
                         <Table.Cell textAlign="end">
                           {hurricane.wind}

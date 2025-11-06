@@ -53,6 +53,10 @@ def parse_hurdat2(file):
                 month = int(month_year_date[4:6])
                 day = int(month_year_date[6:8])
                 
+                time = info[1]
+                hour = int(time[0:2])
+                minute = int(time[2:4])
+                
                 if year < 1900:
                     continue
                 
@@ -68,6 +72,7 @@ def parse_hurdat2(file):
                         "year": year,
                         "month": month,
                         "day": day,
+                        "time": f"{hour:02d}:{minute:02d}",
                         "wind": wind,
                     })
                     
