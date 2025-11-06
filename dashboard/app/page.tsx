@@ -1,65 +1,172 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  Box,
+  Spinner,
+  Text,
+  Table,
+  ButtonGroup,
+  IconButton,
+  Pagination,
+  Stack,
+} from "@chakra-ui/react";
+import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
+
+export type Hurricane = {
+  name: string;
+  year: number;
+  month: number;
+  day: string;
+  wind: number;
+  latitude: number;
+  longitude: number;
+};
 
 export default function Home() {
+  const [hurricanes, setHurricanes] = useState<Hurricane[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const fetchHurricanes = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_SERVER_ENDPOINT}/hurricanes/landfall/florida`
+        );
+        if (!response.ok) {
+          setError(`HTTP error: ${response.status}`);
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!data || !data.success) {
+          setError(data.error || "Invalid API response format.");
+          return;
+        }
+
+        setHurricanes(data.data);
+      } catch (error) {
+        setError("Failed to fetch hurricane data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHurricanes();
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <Box
+      minH="100vh"
+      bg="white"
+      color="black"
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="flex-start"
+      py={10}
+    >
+      {loading && <Spinner size="xl" mt={10} />}
+      {error && <Text fontSize="xl">{error}</Text>}
+      {hurricanes.length <= 0 && !loading && (
+        <Text fontSize="xl">No hurricanes found</Text>
+      )}
+
+      <Text fontSize="3xl" fontWeight="bold" textAlign="center" mb={6}>
+        All hurricanes that have made landfall in Florida since 1900
+      </Text>
+
+      <Box w={{ base: "100%", md: "80%", lg: "50%" }} mx="auto">
+        <Stack width="full" gap="5">
+          <Table.Root size="sm" variant="outline" showColumnBorder>
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader w="34%">Name</Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="center" w="33%">
+                  Date
+                </Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="end" w="33%">
+                  Wind Speed
+                </Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+
+            <Table.Body>
+              {hurricanes
+                .slice((page - 1) * 10, page * 10)
+                .map((hurricane, index) => (
+                  <Table.Row key={index}>
+                    <Table.Cell fontWeight="medium">
+                      {hurricane.name}
+                    </Table.Cell>
+                    <Table.Cell textAlign="center">
+                      {hurricane.month}/{hurricane.day}/{hurricane.year}
+                    </Table.Cell>
+                    <Table.Cell textAlign="end">{hurricane.wind}</Table.Cell>
+                  </Table.Row>
+                ))}
+            </Table.Body>
+          </Table.Root>
+
+          <Pagination.Root
+            count={Math.ceil(hurricanes.length / 10) * 10}
+            pageSize={10}
+            page={page}
+            onPageChange={(e) => setPage(e.page)}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            <ButtonGroup
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              gap={2}
+              mt={6}
+            >
+              <Pagination.PrevTrigger asChild>
+                <IconButton
+                  aria-label="Previous page"
+                  color="black"
+                  variant="ghost"
+                  _hover={{ bg: "gray.100" }}
+                >
+                  <LuChevronLeft />
+                </IconButton>
+              </Pagination.PrevTrigger>
+
+              <Pagination.Items
+                render={(pageItem) => (
+                  <IconButton
+                    key={pageItem.value}
+                    aria-label={`Page ${pageItem.value}`}
+                    color="black"
+                    borderWidth={page === pageItem.value ? "2px" : "1px"}
+                    borderColor={page === pageItem.value ? "black" : "gray.200"}
+                    bg={page === pageItem.value ? "gray.100" : "white"}
+                    fontWeight={page === pageItem.value ? "bold" : "normal"}
+                    _hover={{ bg: "gray.50" }}
+                    onClick={() => setPage(pageItem.value)}
+                  >
+                    {pageItem.value}
+                  </IconButton>
+                )}
+              />
+
+              <Pagination.NextTrigger asChild>
+                <IconButton
+                  aria-label="Next page"
+                  color="black"
+                  variant="ghost"
+                  _hover={{ bg: "gray.100" }}
+                >
+                  <LuChevronRight />
+                </IconButton>
+              </Pagination.NextTrigger>
+            </ButtonGroup>
+          </Pagination.Root>
+        </Stack>
+      </Box>
+    </Box>
   );
 }
