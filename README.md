@@ -1,6 +1,6 @@
 # Florida Hurricane Landfall Since 1900
 - Backend: Python 3.11+, Flask
-- Frontend: React/Nextjs + Typescript and ChakraUI for styling
+- Frontend: Node >=20.9.0, React/Nextjs + Typescript and ChakraUI for styling
 
 ## Server Overview:
 #### Server Functions
@@ -48,17 +48,20 @@ python app.py
 ```
 Once it starts successfully, you should see something like this:
 ```
-Running on http://localhost:5000
+Running on http://127.0.0.1:5000
 ```
 
 ### Dashboard
-Inside the dashboard folder. Create `.env` file in the main root of the dashboard folder 
+Inside the dashboard folder. Create `.env` file in the main root of the dashboard folder `/dashboard/.env`
 ```
-NEXT_PUBLIC_SERVER_ENDPOINT = http://localhost:5000
+NEXT_PUBLIC_SERVER_ENDPOINT = http://127.0.0.1:5000
 ```
 Then run
 ``` bash 
+npm install
+
 # To build the project
+# Run it again everytime the code is updated before run start
 npm run build
 # then to start the project
 npm run start

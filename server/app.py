@@ -4,7 +4,7 @@ import pandas as pd
 from global_land_mask import globe
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 FLORIDA_BOUNDS = {
     "lat_min": 24.45,
