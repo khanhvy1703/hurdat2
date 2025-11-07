@@ -11,13 +11,14 @@ import {
   Pagination,
   Stack,
   Button,
+  HStack,
 } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
-import { apiCall } from "./utils/api";
 import { Hurricane } from "./utils/type";
 
 export default function Home() {
   const [hurricanes, setHurricanes] = useState<Hurricane[]>([]);
+  const [filteredHurricanes, setFilteredHurricanes] = useState<Hurricane[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -27,17 +28,30 @@ export default function Home() {
   useEffect(() => {
     const fetchHurricanes = async () => {
       try {
-        const data = await apiCall<Hurricane[]>(
-          `${process.env.NEXT_PUBLIC_SERVER_ENDPOINT}/hurricanes/landfall/florida`
-        );
-        setHurricanes(data);
-      } catch (err: any) {
-        setError(true);
-        setErrorMessage(err.message);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_ENDPOINT}/hurricanes/landfall/florida`);
+
+        if (response.status !== 200) {
+          setError(true)
+          setErrorMessage("Failed to fetch hurricane data.")
+          return
+        }
+
+        const data = await response.json()
+
+        if (!data || !data.success) {
+          setError(data.error || "No data.");
+          return;
+        }
+
+        setHurricanes(data.data);
+        setFilteredHurricanes(data.data);
+      } catch (error) {
+        setError(true)
+        setErrorMessage("Failed to fetch hurricane data.")
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     fetchHurricanes();
   }, []);
@@ -46,7 +60,23 @@ export default function Home() {
     setLoading(true);
 
     try {
-      await apiCall(`${process.env.NEXT_PUBLIC_SERVER_ENDPOINT}/export_csv`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_ENDPOINT}/export_csv`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(filteredHurricanes), 
+        }
+      );
+
+      if (response.status !== 200) {
+        const errorData = await response.json();
+        setError(true);
+        setErrorMessage(errorData.error || "Export failed")
+        return;
+      }
+
       setExported(true);
     } catch (err: any) {
       setError(true);
@@ -55,6 +85,23 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  const filterHurricanes = (period: number) => {
+    let filtered: Hurricane[] = [];
+
+    if (period === 1) {
+      filtered = hurricanes.filter(h => h.year >= 1900 && h.year < 1950);
+    } else if (period === 2) {
+      filtered = hurricanes.filter(h => h.year >= 1950 && h.year < 2000);
+    } else if (period === 3) {
+      filtered = hurricanes.filter(h => h.year >= 2000 && h.year <= 2050);
+    } else {
+      filtered = hurricanes;  
+    }
+
+    setFilteredHurricanes(filtered);
+    setPage(1);
+  }
 
   return (
     <Box
@@ -87,108 +134,123 @@ export default function Home() {
             )}
           </Stack>
 
-          {hurricanes.length === 0 && (
-            <Text fontSize="xl">No hurricanes found.</Text>
-          )}
+          <HStack mb={4} gap={4} >
+            <Button color={'black'} colorPalette="blue" variant="outline" onClick={() => filterHurricanes(0)}>
+              All
+            </Button>
+            <Button color={'black'} colorPalette="blue" variant="outline" onClick={() => filterHurricanes(1)}>
+              1900 - 1949
+            </Button>
+            <Button color={'black'} colorPalette="blue" variant="outline" onClick={() => filterHurricanes(2)}>
+              1950 - 1999
+            </Button>
+            <Button color={'black'} colorPalette="blue" variant="outline" onClick={() => filterHurricanes(3)}>
+              2000 - 2050
+            </Button>
+          </HStack>
 
-          {hurricanes.length > 0 && (<Box w={{ base: "100%", md: "80%", lg: "50%" }} mx="auto">
-            <Stack width="full" gap="5">
-              <Table.Root size="sm" variant="outline" showColumnBorder>
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader w="25%">Name</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="center" w="25%">
-                      Date
-                    </Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="center" w="25%">
-                      Time
-                    </Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end" w="25%">
-                      Wind Speed
-                    </Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
+          {filterHurricanes.length > 0 && (
+            <Box w={{ base: "100%", md: "80%", lg: "50%" }} mx="auto">
+              <Stack width="full" gap="5">
+                <Table.Root size="sm" variant="outline" showColumnBorder>
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.ColumnHeader w="25%">Name</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="center" w="25%">
+                        Date
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="center" w="25%">
+                        Time
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="end" w="25%">
+                        Wind Speed
+                      </Table.ColumnHeader>
+                    </Table.Row>
+                  </Table.Header>
 
-                <Table.Body>
-                  {hurricanes
-                    .slice((page - 1) * 10, page * 10)
-                    .map((hurricane, index) => (
-                      <Table.Row key={index}>
-                        <Table.Cell fontWeight="medium">
-                          {hurricane.name}
-                        </Table.Cell>
-                        <Table.Cell textAlign="center">
-                          {hurricane.month}/{hurricane.day}/{hurricane.year}
-                        </Table.Cell>
-                        <Table.Cell textAlign="center">
-                          {hurricane.time}
-                        </Table.Cell>
-                        <Table.Cell textAlign="end">
-                          {hurricane.wind}
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                </Table.Body>
-              </Table.Root>
+                  <Table.Body>
+                    {filteredHurricanes
+                      .slice((page - 1) * 10, page * 10)
+                      .map((hurricane, index) => (
+                        <Table.Row key={index}>
+                          <Table.Cell fontWeight="medium">
+                            {hurricane.name}
+                          </Table.Cell>
+                          <Table.Cell textAlign="center">
+                            {hurricane.month}/{hurricane.day}/{hurricane.year}
+                          </Table.Cell>
+                          <Table.Cell textAlign="center">
+                            {hurricane.time}
+                          </Table.Cell>
+                          <Table.Cell textAlign="end">
+                            {hurricane.wind}
+                          </Table.Cell>
+                        </Table.Row>
+                      ))}
+                  </Table.Body>
+                </Table.Root>
 
-              <Pagination.Root
-                count={Math.ceil(hurricanes.length / 10) * 10}
-                pageSize={10}
-                page={page}
-                onPageChange={(e) => setPage(e.page)}
-              >
-                <ButtonGroup
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  gap={2}
-                  mt={6}
+                <Pagination.Root
+                  count={Math.ceil(filteredHurricanes.length / 10) * 10}
+                  pageSize={10}
+                  page={page}
+                  onPageChange={(e) => setPage(e.page)}
                 >
-                  <Pagination.PrevTrigger asChild>
-                    <IconButton
-                      aria-label="Previous page"
-                      color="black"
-                      variant="ghost"
-                      _hover={{ bg: "gray.100" }}
-                    >
-                      <LuChevronLeft />
-                    </IconButton>
-                  </Pagination.PrevTrigger>
-
-                  <Pagination.Items
-                    render={(pageItem) => (
+                  <ButtonGroup
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    gap={2}
+                    mt={6}
+                  >
+                    <Pagination.PrevTrigger asChild>
                       <IconButton
-                        key={pageItem.value}
-                        aria-label={`Page ${pageItem.value}`}
+                        aria-label="Previous page"
                         color="black"
-                        borderWidth={page === pageItem.value ? "2px" : "1px"}
-                        borderColor={
-                          page === pageItem.value ? "black" : "gray.200"
-                        }
-                        bg={page === pageItem.value ? "gray.100" : "white"}
-                        fontWeight={page === pageItem.value ? "bold" : "normal"}
-                        _hover={{ bg: "gray.50" }}
-                        onClick={() => setPage(pageItem.value)}
+                        variant="ghost"
+                        _hover={{ bg: "gray.100" }}
                       >
-                        {pageItem.value}
+                        <LuChevronLeft />
                       </IconButton>
-                    )}
-                  />
+                    </Pagination.PrevTrigger>
 
-                  <Pagination.NextTrigger asChild>
-                    <IconButton
-                      aria-label="Next page"
-                      color="black"
-                      variant="ghost"
-                      _hover={{ bg: "gray.100" }}
-                    >
-                      <LuChevronRight />
-                    </IconButton>
-                  </Pagination.NextTrigger>
-                </ButtonGroup>
-              </Pagination.Root>
-            </Stack>
-          </Box>)}
+                    <Pagination.Items
+                      render={(pageItem) => (
+                        <IconButton
+                          key={pageItem.value}
+                          aria-label={`Page ${pageItem.value}`}
+                          color="black"
+                          borderWidth={page === pageItem.value ? "2px" : "1px"}
+                          borderColor={
+                            page === pageItem.value ? "black" : "gray.200"
+                          }
+                          bg={page === pageItem.value ? "gray.100" : "white"}
+                          fontWeight={
+                            page === pageItem.value ? "bold" : "normal"
+                          }
+                          _hover={{ bg: "gray.50" }}
+                          onClick={() => setPage(pageItem.value)}
+                        >
+                          {pageItem.value}
+                        </IconButton>
+                      )}
+                    />
+
+                    <Pagination.NextTrigger asChild>
+                      <IconButton
+                        aria-label="Next page"
+                        color="black"
+                        variant="ghost"
+                        _hover={{ bg: "gray.100" }}
+                      >
+                        <LuChevronRight />
+                      </IconButton>
+                    </Pagination.NextTrigger>
+                  </ButtonGroup>
+                </Pagination.Root>
+              </Stack>
+            </Box>
+          )}
         </>
       )}
     </Box>

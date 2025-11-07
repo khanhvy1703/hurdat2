@@ -1,7 +1,9 @@
 from io import StringIO
-from flask import Flask, jsonify, request
+
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
+from global_land_mask import globe
 
 app = Flask(__name__)
 CORS(app)
@@ -13,7 +15,7 @@ FLORIDA_BOUNDS = {
     "lon_max": -80.03
 }
 DATA_FILE = "hurdat2-1851-2024-040425.txt"
-DEFAULT_EXPORT_FILE = "florida_landfall_hurricanes.csv"
+DEFAULT_EXPORT_PATH = "florida_landfall_hurricanes.csv"
 
 def is_in_florida(lat, lon):
     """
@@ -78,31 +80,96 @@ def parse_hurdat2(file):
                     
     return pd.DataFrame(florida_hurricanes)
 
+def parse_hurdat2_without_L_indicator(file):
+    """
+    Expand main version to identify hurricanes that made landfall in Florida without using the L indicator in the data.
+    """ 
+    florida_hurricanes = []
+    huricane_name = None  
+    
+    prev_on_land = False
+    has_prev_point = False
+     
+    with open(file) as f:
+        lines = f.readlines()
+        print(lines[1])
+
+    for line in lines: 
+        if line.startswith("AL"):
+            info = [i.strip() for i in line.split(",")]
+            
+            huricane_name = info[1]
+            prev_on_land = False
+            has_prev_point = False
+        else:
+            info = [i.strip() for i in line.split(",")]
+             
+            if info[3] == "HU":
+                month_year_date = info[0]
+                year = int(month_year_date[0:4])
+                month = int(month_year_date[4:6])
+                day = int(month_year_date[6:8])
+                
+                time = info[1]
+                hour = int(time[0:2])
+                minute = int(time[2:4])
+                
+                if year < 1900:
+                    continue
+                
+                lat_str = info[4]
+                lon_str = info[5]
+                lat = float(lat_str[:-1]) * (1 if lat_str.endswith("N") else -1)
+                lon = float(lon_str[:-1]) * (-1 if lon_str.endswith("W") else 1)
+                
+                wind = int(info[6])
+                
+                curr_on_land = not globe.is_ocean(lat, lon)
+
+                if curr_on_land and not prev_on_land and has_prev_point:
+                    if is_in_florida(lat, lon):
+                        florida_hurricanes.append({
+                            "name": huricane_name,
+                            "year": year,
+                            "month": month,
+                            "day": day,
+                            "time": f"{hour:02d}:{minute:02d}",
+                            "wind": wind,
+                        })
+
+                prev_on_land = curr_on_land
+                has_prev_point = True
+                    
+    return pd.DataFrame(florida_hurricanes)
+
 @app.route("/")
 def home():
     return "API is running."
 
-@app.route("/export_csv", methods=["GET"])
+@app.route("/export_csv", methods=["POST"])
 def export_csv():
     """
     Export the Florida landfall hurricanes data to a CSV file.
     """
     try:
-        df = parse_hurdat2(DATA_FILE)
-        df.to_csv(DEFAULT_EXPORT_FILE, index=False)
+        data = request.get_json()
+        if not data or not isinstance(data, list):
+            return jsonify({
+                "success": False,
+                "code": 400,
+                "error": "Request body must be a JSON list of objects."
+            }), 400
+
+        df = pd.DataFrame(data)
+        export_path = DEFAULT_EXPORT_PATH 
+        df.to_csv(export_path, index=False)
 
         return jsonify({
             "success": True,
             "code": 200,
-            "message": "CSV exported successfully"
+            "message": f"CSV exported successfully to {export_path}",
+            "rows": len(df)
         }), 200
-
-    except FileNotFoundError as e:
-        return jsonify({
-            "success": False,
-            "code": 404,
-            "error": str(e)
-        }), 404
 
     except Exception as e:
         return jsonify({
