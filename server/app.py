@@ -1,5 +1,3 @@
-from io import StringIO
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
@@ -19,14 +17,32 @@ DEFAULT_EXPORT_PATH = "florida_landfall_hurricanes.csv"
 
 def is_in_florida(lat, lon):
     """
-    Check if coordinates fall within Florida’s bounding box.
+    Check if given latitude and longitude falls within bounding box of the state of Florida.
+
+    Args:
+        lat (float): Latitude 
+        lon (float): Longitude
+
+    Returns:
+        bool: True if inside, else False.
     """
     return (FLORIDA_BOUNDS["lat_min"] <= lat <= FLORIDA_BOUNDS["lat_max"] and
             FLORIDA_BOUNDS["lon_min"] <= lon <= FLORIDA_BOUNDS["lon_max"])
 
 def parse_hurdat2(file):
     """
-    Parse the HURDAT2 filepath and extract hurricane landfalls in Florida.
+    Parse a hurdat2 file and extract hurricanes that made landfall in Florida using L indicator from the data file.
+
+    Args:
+        file (str): Path to the HURDAT2 dataset file (text format).
+
+    Returns:
+        A DataFrame containing hurricanes infomation that made landfall
+        in Florida since 1900, with columns
+
+    Raises:
+        ValueError: If any line in the file does not match expected format.
+        FileNotFoundError: If the file cannot be located.
     """ 
     florida_hurricanes = []
     huricane_name = None  
@@ -82,7 +98,8 @@ def parse_hurdat2(file):
 
 def parse_hurdat2_without_L_indicator(file):
     """
-    Expand main version to identify hurricanes that made landfall in Florida without using the L indicator in the data.
+    Expanded version of parse_hurdat2 to find the huricanes that made landfall in Florida without using L indicator from the data file.
+    Detect using the `global_land_mask` library
     """ 
     florida_hurricanes = []
     huricane_name = None  
